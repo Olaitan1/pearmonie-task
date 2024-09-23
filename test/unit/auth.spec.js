@@ -1,79 +1,87 @@
-import chai from "chai";
-import sinon from "sinon";
-import chaiHttp from "chai-http";
-import bcrypt from "bcrypt";
-import { User } from "../../src/model/index.js";
-import { AdminRegister } from "../../src/controller/controller.js";
+(async () =>
+{
+  const chai = await import("chai");
+  const sinon = await import("sinon");
+  const chaiHttp = await import("chai-http");
+  const bcrypt = await import("bcrypt");
+  const { User } = await import("../../src/model/index.js");
+  const { AdminRegister } = await import("../../src/controller/controller.js");
 
-chai.use(chaiHttp);
-const { expect } = chai;
+  chai.use(chaiHttp);
+  const { expect } = chai;
 
-describe("Admin Registration", () => {
-  let req,
-    res,
-    userFindOneStub,
-    userCreateStub,
-    generateSaltStub,
-    generatePasswordStub;
+  describe("Admin Registration", () =>
+  {
+    let req,
+      res,
+      userFindOneStub,
+      userCreateStub,
+      generateSaltStub,
+      generatePasswordStub;
 
-  beforeEach(() => {
-    req = {
-      body: {
-        email: "admin@example.com",
+    beforeEach(() =>
+    {
+      req = {
+        body: {
+          email: "admin@example.com",
+          username: "admin",
+          password: "password123",
+        },
+      };
+      res = {
+        status: sinon.stub().returnsThis(),
+        json: sinon.stub(),
+      };
+
+      userFindOneStub = sinon.stub(User, "findOne");
+      userCreateStub = sinon.stub(User, "create");
+      generateSaltStub = sinon.stub(bcrypt, "genSalt");
+      generatePasswordStub = sinon.stub(bcrypt, "hash");
+    });
+
+    afterEach(() =>
+    {
+      sinon.restore();
+    });
+
+    it("should register a new admin successfully", async () =>
+    {
+      // Mocking the expected outcomes
+      userFindOneStub.resolves(null);
+      generateSaltStub.resolves("mockSalt");
+      generatePasswordStub.resolves("mockHashedPassword");
+      userCreateStub.resolves({
+        id: "adminId",
         username: "admin",
-        password: "password123",
-      },
-    };
-    res = {
-      status: sinon.stub().returnsThis(),
-      json: sinon.stub(),
-    };
+        email: "admin@example.com",
+        role: "admin",
+      });
 
-    userFindOneStub = sinon.stub(User, "findOne");
-    userCreateStub = sinon.stub(User, "create");
-    generateSaltStub = sinon.stub(bcrypt, "genSalt");
-    generatePasswordStub = sinon.stub(bcrypt, "hash");
-  });
+      // Call the function
+      await AdminRegister(req, res);
 
-  afterEach(() => {
-    sinon.restore();
-  });
-
-  it("should register a new admin successfully", async () => {
-    // Mocking the expected outcomes
-    userFindOneStub.resolves(null);
-    generateSaltStub.resolves("mockSalt");
-    generatePasswordStub.resolves("mockHashedPassword");
-    userCreateStub.resolves({
-      id: "adminId",
-      username: "admin",
-      email: "admin@example.com",
-      role: "admin",
+      // Assertions
+      expect(res.status.calledWith(201)).to.be.true;
+      expect(
+        res.json.calledWith(sinon.match({ message: "User created successfully" }))
+      ).to.be.true;
+      expect(userCreateStub.calledOnce).to.be.true;
     });
 
-    // Call the function
-    await AdminRegister(req, res);
+    it("should return an error if the admin already exists", async () =>
+    {
+      userFindOneStub.resolves({
+        id: "existingAdminId",
+        username: "admin",
+        email: "admin@example.com",
+      });
 
-    // Assertions
-    expect(res.status.calledWith(201)).to.be.true;
-    expect(
-      res.json.calledWith(sinon.match({ message: "User created successfully" }))
-    ).to.be.true;
-    expect(userCreateStub.calledOnce).to.be.true;
-  });
+      await AdminRegister(req, res);
 
-  it("should return an error if the admin already exists", async () => {
-    userFindOneStub.resolves({
-      id: "existingAdminId",
-      username: "admin",
-      email: "admin@example.com",
+      expect(res.status.calledWith(400)).to.be.true;
+      expect(
+        res.json.calledWith(sinon.match({ Error: "Admin email already exists" }))
+      ).to.be.true;
     });
-
-    await AdminRegister(req, res);
-
-    expect(res.status.calledWith(400)).to.be.true;
-    expect(
-      res.json.calledWith(sinon.match({ Error: "Admin email already exists" }))
-    ).to.be.true;
   });
-});
+})();
