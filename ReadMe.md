@@ -45,7 +45,7 @@ or npm run dev
 
 # DOCKER
 run: 
-docker-compose build
+docker-compose up --build
 
 
 RUNNING PROJECT TEST
